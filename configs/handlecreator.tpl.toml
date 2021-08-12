@@ -1,0 +1,32 @@
+logfile = "" # log file location
+loglevel = "DEBUG" # CRITICAL|ERROR|WARNING|NOTICE|INFO|DEBUG
+logformat = "%{time:2006-01-02T15:04:05.000} %{module}::%{shortfunc} [%{shortfile}] > %{level:.5s} - %{message}"
+accesslog = "" # http access log file
+addr = "localhost:8444"
+addrext = "https://localhost:8444/"
+certpem = "auto"
+#certpem = "cert/server.crt" # tls client certificate file in PEM format
+#keypem = "cert/server.key" # tls client key file in PEM format
+
+[tunnel.mysql]
+    user = "root"
+    privatekey = "C:/daten/keys/putty_ed25519.priv.openssh"
+
+    [tunnel.mysql.serverendpoint]
+        port = 22
+        host = "ba14ns21403.fhnw.ch"
+
+    [tunnel.mysql.localendpoint]
+        port = 3356
+        host = "localhost"
+
+    [tunnel.mysql.remoteendpoint]
+        port = 3306
+        host = "v000306.adm.ds.fhnw.ch"
+
+[db]
+    servertype = "mysql"
+    dsn = "uuuuuuuu:xxxxxxxxxx@tcp(localhost:3356)/mediathek_handle"
+    # should be smaller than server connection timeout to allow controlled reconnect
+    connMaxTimeout = "4h"
+    schema = "mediathek_handle"
