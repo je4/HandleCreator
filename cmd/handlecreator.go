@@ -22,6 +22,8 @@ func main() {
 	logger, lf := lm.CreateLogger("HandleCreator", config.Logfile, nil, config.Loglevel, config.Logformat)
 	defer lf.Close()
 
+	// todo: ssh tunnel
+
 	// get database connection handle
 	db, err := sql.Open(config.DB.ServerType, config.DB.DSN)
 	if err != nil {
