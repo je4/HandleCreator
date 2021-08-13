@@ -8,19 +8,16 @@ certpem = "auto"
 #certpem = "cert/server.crt" # tls client certificate file in PEM format
 #keypem = "cert/server.key" # tls client key file in PEM format
 
-[tunnel.mysql]
+[tunnel.ba14ns21403]
     user = "root"
     privatekey = "C:/daten/keys/putty_ed25519.priv.openssh"
-
-    [tunnel.mysql.serverendpoint]
+    [tunnel.ba14ns21403.endpoint]
         port = 22
         host = "ba14ns21403.fhnw.ch"
-
-    [tunnel.mysql.localendpoint]
+    [tunnel.ba14ns21403.forward.mysql.local]
         port = 3356
         host = "localhost"
-
-    [tunnel.mysql.remoteendpoint]
+    [tunnel.ba14ns21403.forward.mysql.remote]
         port = 3306
         host = "v000306.adm.ds.fhnw.ch"
 

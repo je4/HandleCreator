@@ -11,12 +11,16 @@ type Endpoint struct {
 	Port int    `toml:"port"`
 }
 
+type Forward struct {
+	Local  Endpoint `toml:"local"`
+	Remote Endpoint `toml:"remote"`
+}
+
 type SSHTunnel struct {
-	User           string   `toml:"user"`
-	PrivateKey     string   `toml:"privatekey"`
-	LocalEndpoint  Endpoint `toml:"localendpoint"`
-	ServerEndpoint Endpoint `toml:"serverendpoint"`
-	RemoteEndpoint Endpoint `toml:"remoteendpoint"`
+	User       string             `toml:"user"`
+	PrivateKey string             `toml:"privatekey"`
+	Endpoint   Endpoint           `toml:"endpoint"`
+	Forward    map[string]Forward `toml:"forward"`
 }
 
 type duration struct {
