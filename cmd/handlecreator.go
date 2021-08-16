@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"flag"
 	_ "github.com/go-sql-driver/mysql"
@@ -10,6 +11,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -93,9 +96,41 @@ func main() {
 		logger.Panicf("error pinging database: %v", err)
 	}
 
-	_, err = NewServer(config.Addr, logger, accesslog, config.JWTKey, config.JWTAlg)
+	srv, err := NewServer(config.Addr, db, config.DB.Schema, logger, accesslog, config.JWTKey, config.JWTAlg)
 	if err != nil {
 		logger.Panicf("error initializing server: %v", err)
 	}
 
+	go func() {
+		if err := srv.ListenAndServe(config.CertPEM, config.KeyPEM); err != nil {
+			log.Fatalf("server died: %v", err)
+		}
+	}()
+
+	end := make(chan bool, 1)
+
+	// process waiting for interrupt signal (TERM or KILL)
+	go func() {
+		sigint := make(chan os.Signal, 1)
+
+		// interrupt signal sent from terminal
+		signal.Notify(sigint, os.Interrupt)
+
+		signal.Notify(sigint, syscall.SIGTERM)
+		signal.Notify(sigint, syscall.SIGKILL)
+
+		<-sigint
+
+		// We received an interrupt signal, shut down.
+		logger.Infof("shutdown requested")
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		srv.Shutdown(ctx)
+
+		end <- true
+	}()
+
+	<-end
+	logger.Info("server stopped")
 }
