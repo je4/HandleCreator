@@ -114,7 +114,7 @@ func (s *Server) createHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	s.log.Info("creating handle %s", cp.Handle)
+	s.log.Infof("creating handle %s", cp.Handle)
 	result, err := s.replaceStmt.Exec(cp.Handle, cp.Url)
 	if err != nil {
 		s.log.Errorf("cannot execute query: %v", err)
