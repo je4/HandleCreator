@@ -69,7 +69,7 @@ func (s *Server) ListenAndServe(cert, key string) (err error) {
 			s.jwtKey,
 			[]string{"HS256", "HS384", "HS512"},
 			sha512.New())),
-	).Methods("GET")
+	).Methods("POST")
 	loggedRouter := handlers.CombinedLoggingHandler(s.accessLog, handlers.ProxyHeaders(router))
 	addr := net.JoinHostPort(s.host, s.port)
 	s.srv = &http.Server{
@@ -109,28 +109,32 @@ func (s *Server) createHandler(w http.ResponseWriter, req *http.Request) {
 	jsonDec := json.NewDecoder(req.Body)
 	cp := &createParam{}
 	if err := jsonDec.Decode(cp); err != nil {
+		s.log.Errorf("invalid request body for create: %v", err)
 		http.Error(w, fmt.Sprintf("invalid request body for create: %v", err), http.StatusBadRequest)
 		return
 	}
 
+	s.log.Info("creating handle %s", cp.Handle)
 	result, err := s.replaceStmt.Exec(cp.Handle, cp.Url)
 	if err != nil {
+		s.log.Errorf("cannot execute query: %v", err)
 		http.Error(w, fmt.Sprintf("cannot execute query: %v", err), http.StatusBadRequest)
 		return
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
+		s.log.Errorf("cannot get affected rows: %v", err)
 		http.Error(w, fmt.Sprintf("cannot get affected rows: %v", err), http.StatusBadRequest)
 		return
 	}
 	switch rows {
 	case 0:
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte(fmt.Sprintf("%s written to handle server - no change", cp.Handle)))
 	case 1:
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte(fmt.Sprintf("%s written to handle server", cp.Handle)))
 	default:
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")

@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"flag"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/je4/sshtunnel/v2/pkg/sshtunnel"
 	lm "github.com/je4/utils/v2/pkg/logger"
+	"github.com/je4/utils/v2/pkg/ssh"
 	_ "github.com/lib/pq"
 	"io"
 	"log"
@@ -29,40 +29,43 @@ func main() {
 	logger, lf := lm.CreateLogger("HandleCreator", config.Logfile, nil, config.Loglevel, config.Logformat)
 	defer lf.Close()
 
-	var accesslog io.Writer
+	var accessLog io.Writer
+	var f *os.File
+	var err error
 	if config.AccessLog == "" {
-		accesslog = os.Stdout
+		accessLog = os.Stdout
 	} else {
-		f, err := os.OpenFile(config.AccessLog, os.O_WRONLY|os.O_CREATE, 0755)
+		f, err = os.OpenFile(config.AccessLog, os.O_WRONLY|os.O_CREATE, 0755)
 		if err != nil {
 			logger.Panicf("cannot open file %s: %v", config.AccessLog, err)
 			return
 		}
 		defer f.Close()
-		accesslog = f
+		accessLog = f
 	}
 
+	var tunnels []*ssh.SSHtunnel
 	for name, tunnel := range config.Tunnel {
 		logger.Infof("starting tunnel %s", name)
 
-		forwards := make(map[string]*sshtunnel.SourceDestination)
+		forwards := make(map[string]*ssh.SourceDestination)
 		for fwname, fw := range tunnel.Forward {
-			forwards[fwname] = &sshtunnel.SourceDestination{
-				Local: &sshtunnel.Endpoint{
+			forwards[fwname] = &ssh.SourceDestination{
+				Local: &ssh.Endpoint{
 					Host: fw.Local.Host,
 					Port: fw.Local.Port,
 				},
-				Remote: &sshtunnel.Endpoint{
+				Remote: &ssh.Endpoint{
 					Host: fw.Remote.Host,
 					Port: fw.Remote.Port,
 				},
 			}
 		}
 
-		t, err := sshtunnel.NewSSHTunnel(
+		t, err := ssh.NewSSHTunnel(
 			tunnel.User,
 			tunnel.PrivateKey,
-			&sshtunnel.Endpoint{
+			&ssh.Endpoint{
 				Host: tunnel.Endpoint.Host,
 				Port: tunnel.Endpoint.Port,
 			},
@@ -73,10 +76,15 @@ func main() {
 			logger.Panicf("cannot create tunnel %v@%v:%v - %v", tunnel.User, tunnel.Endpoint.Host, tunnel.Endpoint.Port, err)
 		}
 		if err := t.Start(); err != nil {
-			logger.Panicf("cannot create sshtunnel %v - %v", t.String(), err)
+			logger.Panicf("cannot create ssh tunnel %v - %v", t.String(), err)
 		}
-		defer t.Close()
+		tunnels = append(tunnels, t)
 	}
+	defer func() {
+		for _, t := range tunnels {
+			t.Close()
+		}
+	}()
 	// if tunnels are made, wait until connection is established
 	if len(config.Tunnel) > 0 {
 		time.Sleep(2 * time.Second)
@@ -96,7 +104,7 @@ func main() {
 		logger.Panicf("error pinging database: %v", err)
 	}
 
-	srv, err := NewServer(config.Addr, db, config.DB.Schema, logger, accesslog, config.JWTKey, config.JWTAlg)
+	srv, err := NewServer(config.Addr, db, config.DB.Schema, logger, accessLog, config.JWTKey, config.JWTAlg)
 	if err != nil {
 		logger.Panicf("error initializing server: %v", err)
 	}
