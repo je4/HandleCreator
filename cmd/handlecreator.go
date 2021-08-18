@@ -17,7 +17,7 @@ import (
 )
 
 func main() {
-	var configfile = flag.String("cfg", "/etc/tbbs.toml", "configuration file")
+	var configfile = flag.String("cfg", "/etc/handlecreator.toml", "configuration file")
 
 	flag.Parse()
 	config := &Config{}
