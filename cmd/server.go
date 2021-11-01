@@ -61,6 +61,7 @@ func (s *Server) Init() error {
 
 func (s *Server) ListenAndServe(cert, key string) (err error) {
 	router := mux.NewRouter()
+	router.HandleFunc("/ping", s.pingHandler).Methods("GET")
 	router.Handle(
 		"/create",
 		handlers.CompressHandler(JWTInterceptor.JWTInterceptor(
@@ -103,6 +104,12 @@ func (s *Server) Shutdown(ctx context.Context) error {
 type createParam struct {
 	Handle string `json:"handle"`
 	Url    string `json:"url"`
+}
+
+func (s *Server) pingHandler(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("pong"))
 }
 
 func (s *Server) createHandler(w http.ResponseWriter, req *http.Request) {
