@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"context"
@@ -28,6 +28,12 @@ type Server struct {
 	db          *sql.DB
 	replaceStmt *sql.Stmt
 	dbSchema    string
+}
+
+type ApiResult struct {
+	Status  string      `json:"status"`
+	Message string      `json:"message"`
+	Result  interface{} `json:"result,omitempty"`
 }
 
 func NewServer(addr string, db *sql.DB, dbSchema string, log *logging.Logger, accessLog io.Writer, jwtKey string, jwtAlg []string) (*Server, error) {
@@ -109,7 +115,14 @@ type createParam struct {
 func (s *Server) pingHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("pong"))
+	jenc := json.NewEncoder(w)
+	if err := jenc.Encode(&ApiResult{
+		Status:  "ok",
+		Message: "pong",
+		Result:  nil,
+	}); err != nil {
+		w.Write([]byte(fmt.Sprintf("error encoding json: %v", err)))
+	}
 }
 
 func (s *Server) createHandler(w http.ResponseWriter, req *http.Request) {
@@ -134,18 +147,37 @@ func (s *Server) createHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, fmt.Sprintf("cannot get affected rows: %v", err), http.StatusBadRequest)
 		return
 	}
+	jenc := json.NewEncoder(w)
 	switch rows {
 	case 0:
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(fmt.Sprintf("%s written to handle server - no change", cp.Handle)))
+		if err := jenc.Encode(&ApiResult{
+			Status:  "ok",
+			Message: fmt.Sprintf("%s written to handle server - no change", cp.Handle),
+			Result:  nil,
+		}); err != nil {
+			http.Error(w, fmt.Sprintf("cannot encode result: %v", err), http.StatusInternalServerError)
+		}
 	case 1:
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(fmt.Sprintf("%s written to handle server", cp.Handle)))
+		if err := jenc.Encode(&ApiResult{
+			Status:  "ok",
+			Message: fmt.Sprintf("%s written to handle server", cp.Handle),
+			Result:  nil,
+		}); err != nil {
+			http.Error(w, fmt.Sprintf("cannot encode result: %v", err), http.StatusInternalServerError)
+		}
 	default:
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf("%s written to handle server - multiple handles - should not happen", cp.Handle)))
+		if err := jenc.Encode(&ApiResult{
+			Status:  "error",
+			Message: fmt.Sprintf("%s written to handle server - multiple handles - should not happen", cp.Handle),
+			Result:  nil,
+		}); err != nil {
+			http.Error(w, fmt.Sprintf("cannot encode result: %v", err), http.StatusInternalServerError)
+		}
 	}
 }

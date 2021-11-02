@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"flag"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/je4/HandleCreator/v2/pkg/server"
 	lm "github.com/je4/utils/v2/pkg/logger"
 	"github.com/je4/utils/v2/pkg/ssh"
 	_ "github.com/lib/pq"
@@ -104,7 +105,7 @@ func main() {
 		logger.Panicf("error pinging database: %v", err)
 	}
 
-	srv, err := NewServer(config.Addr, db, config.DB.Schema, logger, accessLog, config.JWTKey, config.JWTAlg)
+	srv, err := server.NewServer(config.Addr, db, config.DB.Schema, logger, accessLog, config.JWTKey, config.JWTAlg)
 	if err != nil {
 		logger.Panicf("error initializing server: %v", err)
 	}
