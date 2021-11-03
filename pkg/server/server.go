@@ -19,6 +19,7 @@ import (
 )
 
 type Server struct {
+	service     string
 	host, port  string
 	srv         *http.Server
 	log         *logging.Logger
@@ -36,13 +37,14 @@ type ApiResult struct {
 	Result  interface{} `json:"result,omitempty"`
 }
 
-func NewServer(addr string, db *sql.DB, dbSchema string, log *logging.Logger, accessLog io.Writer, jwtKey string, jwtAlg []string) (*Server, error) {
+func NewServer(service, addr string, db *sql.DB, dbSchema string, log *logging.Logger, accessLog io.Writer, jwtKey string, jwtAlg []string) (*Server, error) {
 	host, port, err := net.SplitHostPort(addr)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot split address %s", addr)
 	}
 
 	srv := &Server{
+		service:   service,
 		host:      host,
 		port:      port,
 		db:        db,
@@ -71,8 +73,8 @@ func (s *Server) ListenAndServe(cert, key string) (err error) {
 	router.Handle(
 		"/create",
 		handlers.CompressHandler(JWTInterceptor.JWTInterceptor(
+			s.service,
 			func() http.Handler { return http.HandlerFunc(s.createHandler) }(),
-			"",
 			s.jwtKey,
 			[]string{"HS256", "HS384", "HS512"},
 			sha512.New())),

@@ -41,21 +41,23 @@ type DB struct {
 }
 
 type Config struct {
-	Logfile   string               `toml:"logfile"`
-	Loglevel  string               `toml:"loglevel"`
-	AccessLog string               `toml:"accesslog"`
-	Logformat string               `toml:"logformat"`
-	Addr      string               `toml:"addr"`
-	AddrExt   string               `toml:"addrext"`
-	CertPEM   string               `toml:"certpem"`
-	KeyPEM    string               `toml:"keypem"`
-	JWTKey    string               `toml:"jwtkey"`
-	JWTAlg    []string             `toml:"jwtalg"`
-	Tunnel    map[string]SSHTunnel `toml:"tunnel"`
-	DB        DB                   `toml:"db"`
+	ServiceName string               `toml:"HandleCreator"`
+	Logfile     string               `toml:"logfile"`
+	Loglevel    string               `toml:"loglevel"`
+	AccessLog   string               `toml:"accesslog"`
+	Logformat   string               `toml:"logformat"`
+	Addr        string               `toml:"addr"`
+	AddrExt     string               `toml:"addrext"`
+	CertPEM     string               `toml:"certpem"`
+	KeyPEM      string               `toml:"keypem"`
+	JWTKey      string               `toml:"jwtkey"`
+	JWTAlg      []string             `toml:"jwtalg"`
+	Tunnel      map[string]SSHTunnel `toml:"tunnel"`
+	DB          DB                   `toml:"db"`
 }
 
 func LoadConfig(fp string, conf *Config) error {
+	conf.ServiceName = "HandleCreator"
 	_, err := toml.DecodeFile(fp, conf)
 	if err != nil {
 		return errors.Wrapf(err, "error loading config file %v", fp)

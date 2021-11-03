@@ -55,7 +55,7 @@ func TestMain(m *testing.M) {
 	}
 
 	addr := fmt.Sprintf("localhost:%v", port)
-	srv, err := server.NewServer(addr, db, "test", logger, os.Stdout, "swordfish", []string{"HS512"})
+	srv, err := server.NewServer("test", addr, db, "test", logger, os.Stdout, "swordfish", []string{"HS512"})
 	if err != nil {
 		logger.Panicf("error initializing server: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestMain(m *testing.M) {
 	}()
 	defer srv.Shutdown(context.Background())
 
-	hcClient, err = client.NewHandleCreatorClient(fmt.Sprintf("http://%s", addr), "swordfish", "HS512", false, logger)
+	hcClient, err = client.NewHandleCreatorClient("test", fmt.Sprintf("http://%s", addr), "swordfish", "HS512", false, logger)
 	if err != nil {
 		logger.Fatalf("cannot create handlecreatorclient: %v", err)
 	}

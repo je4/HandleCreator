@@ -22,9 +22,9 @@ type HandleCreatorClient struct {
 	logger *logging.Logger
 }
 
-func NewHandleCreatorClient(addr string, jwtKey, jwtAlg string, certSkipVerify bool, logger *logging.Logger) (*HandleCreatorClient, error) {
+func NewHandleCreatorClient(service, addr string, jwtKey, jwtAlg string, certSkipVerify bool, logger *logging.Logger) (*HandleCreatorClient, error) {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: certSkipVerify}
-	tr, err := JWTInterceptor.NewJWTTransport(nil, sha512.New(), "", jwtKey, jwtAlg, 30*time.Second)
+	tr, err := JWTInterceptor.NewJWTTransport(service, nil, sha512.New(), jwtKey, jwtAlg, 30*time.Second)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot create jwt transport")
 	}
