@@ -74,10 +74,14 @@ func (s *Server) ListenAndServe(cert, key string) (err error) {
 		"/create",
 		handlers.CompressHandler(JWTInterceptor.JWTInterceptor(
 			s.service,
+			"Create",
+			JWTInterceptor.Secure,
 			func() http.Handler { return http.HandlerFunc(s.createHandler) }(),
 			s.jwtKey,
 			[]string{"HS256", "HS384", "HS512"},
-			sha512.New())),
+			sha512.New(),
+			s.log,
+		)),
 	).Methods("POST")
 	loggedRouter := handlers.CombinedLoggingHandler(s.accessLog, handlers.ProxyHeaders(router))
 	addr := net.JoinHostPort(s.host, s.port)
