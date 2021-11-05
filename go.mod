@@ -3,6 +3,7 @@ module github.com/je4/HandleCreator/v2
 go 1.17
 
 replace github.com/je4/HandleCreator/v2 => ./
+
 //replace github.com/je4/utils/v2 => ../utils/
 
 require (
