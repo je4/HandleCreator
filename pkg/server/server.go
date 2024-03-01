@@ -11,7 +11,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/je4/utils/v2/pkg/JWTInterceptor"
 	dcert "github.com/je4/utils/v2/pkg/cert"
-	"github.com/op/go-logging"
+	"github.com/je4/utils/v2/pkg/zLogger"
 	"github.com/pkg/errors"
 	"io"
 	"net"
@@ -22,7 +22,7 @@ type Server struct {
 	service     string
 	host, port  string
 	srv         *http.Server
-	log         *logging.Logger
+	log         zLogger.ZLogger
 	accessLog   io.Writer
 	jwtKey      string
 	jwtAlg      []string
@@ -37,7 +37,7 @@ type ApiResult struct {
 	Result  interface{} `json:"result,omitempty"`
 }
 
-func NewServer(service, addr string, db *sql.DB, dbSchema string, log *logging.Logger, accessLog io.Writer, jwtKey string, jwtAlg []string) (*Server, error) {
+func NewServer(service, addr string, db *sql.DB, dbSchema string, log zLogger.ZLogger, accessLog io.Writer, jwtKey string, jwtAlg []string) (*Server, error) {
 	host, port, err := net.SplitHostPort(addr)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot split address %s", addr)
@@ -91,19 +91,19 @@ func (s *Server) ListenAndServe(cert, key string) (err error) {
 	}
 
 	if cert == "auto" || key == "auto" {
-		s.log.Info("generating new certificate")
+		s.log.Info().Msg("generating new certificate")
 		cert, err := dcert.DefaultCertificate()
 		if err != nil {
 			return errors.Wrap(err, "cannot generate default certificate")
 		}
 		s.srv.TLSConfig = &tls.Config{Certificates: []tls.Certificate{*cert}}
-		s.log.Infof("starting Handle Creator at https://%v/", addr)
+		s.log.Info().Msgf("starting Handle Creator at https://%v/", addr)
 		return s.srv.ListenAndServeTLS("", "")
 	} else if cert != "" && key != "" {
-		s.log.Infof("starting Handle Creator at https://%v", addr)
+		s.log.Info().Msgf("starting Handle Creator at https://%v", addr)
 		return s.srv.ListenAndServeTLS(cert, key)
 	} else {
-		s.log.Infof("starting Handle Creator at http://%v", addr)
+		s.log.Info().Msgf("starting Handle Creator at http://%v", addr)
 		return s.srv.ListenAndServe()
 	}
 }
@@ -135,21 +135,21 @@ func (s *Server) createHandler(w http.ResponseWriter, req *http.Request) {
 	jsonDec := json.NewDecoder(req.Body)
 	cp := &createParam{}
 	if err := jsonDec.Decode(cp); err != nil {
-		s.log.Errorf("invalid request body for create: %v", err)
+		s.log.Error().Msgf("invalid request body for create: %v", err)
 		http.Error(w, fmt.Sprintf("invalid request body for create: %v", err), http.StatusBadRequest)
 		return
 	}
 
-	s.log.Infof("creating handle %s", cp.Handle)
+	s.log.Info().Msgf("creating handle %s", cp.Handle)
 	result, err := s.replaceStmt.Exec(cp.Handle, cp.Url)
 	if err != nil {
-		s.log.Errorf("cannot execute query: %v", err)
+		s.log.Error().Msgf("cannot execute query: %v", err)
 		http.Error(w, fmt.Sprintf("cannot execute query: %v", err), http.StatusBadRequest)
 		return
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		s.log.Errorf("cannot get affected rows: %v", err)
+		s.log.Error().Msgf("cannot get affected rows: %v", err)
 		http.Error(w, fmt.Sprintf("cannot get affected rows: %v", err), http.StatusBadRequest)
 		return
 	}

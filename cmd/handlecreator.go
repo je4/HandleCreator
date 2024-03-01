@@ -6,9 +6,9 @@ import (
 	"flag"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/je4/HandleCreator/v2/pkg/server"
-	lm "github.com/je4/utils/v2/pkg/logger"
-	"github.com/je4/utils/v2/pkg/ssh"
+	"github.com/je4/utils/v2/pkg/zLogger"
 	_ "github.com/lib/pq"
+	"github.com/rs/zerolog"
 	"io"
 	"log"
 	"os"
@@ -26,9 +26,20 @@ func main() {
 		log.Printf("cannot load config file: %v", err)
 	}
 
-	// create logger instance
-	logger, lf := lm.CreateLogger("HandleCreator", config.Logfile, nil, config.Loglevel, config.Logformat)
-	defer lf.Close()
+	var out io.Writer = os.Stdout
+	if config.Logfile != "" {
+		fp, err := os.OpenFile(config.Logfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+		if err != nil {
+			log.Fatalf("cannot open logfile %s: %v", config.Logfile, err)
+		}
+		defer fp.Close()
+		out = fp
+	}
+
+	output := zerolog.ConsoleWriter{Out: out, TimeFormat: time.RFC3339}
+	_logger := zerolog.New(output).With().Timestamp().Logger()
+	_logger.Level(zLogger.LogLevel(config.Loglevel))
+	var logger zLogger.ZLogger = &_logger
 
 	var accessLog io.Writer
 	var f *os.File
@@ -38,63 +49,17 @@ func main() {
 	} else {
 		f, err = os.OpenFile(config.AccessLog, os.O_WRONLY|os.O_CREATE, 0755)
 		if err != nil {
-			logger.Panicf("cannot open file %s: %v", config.AccessLog, err)
+			logger.Panic().Msgf("cannot open file %s: %v", config.AccessLog, err)
 			return
 		}
 		defer f.Close()
 		accessLog = f
 	}
 
-	var tunnels []*ssh.SSHtunnel
-	for name, tunnel := range config.Tunnel {
-		logger.Infof("starting tunnel %s", name)
-
-		forwards := make(map[string]*ssh.SourceDestination)
-		for fwname, fw := range tunnel.Forward {
-			forwards[fwname] = &ssh.SourceDestination{
-				Local: &ssh.Endpoint{
-					Host: fw.Local.Host,
-					Port: fw.Local.Port,
-				},
-				Remote: &ssh.Endpoint{
-					Host: fw.Remote.Host,
-					Port: fw.Remote.Port,
-				},
-			}
-		}
-
-		t, err := ssh.NewSSHTunnel(
-			tunnel.User,
-			tunnel.PrivateKey,
-			&ssh.Endpoint{
-				Host: tunnel.Endpoint.Host,
-				Port: tunnel.Endpoint.Port,
-			},
-			forwards,
-			logger,
-		)
-		if err != nil {
-			logger.Panicf("cannot create tunnel %v@%v:%v - %v", tunnel.User, tunnel.Endpoint.Host, tunnel.Endpoint.Port, err)
-		}
-		if err := t.Start(); err != nil {
-			logger.Panicf("cannot create ssh tunnel %v - %v", t.String(), err)
-		}
-		tunnels = append(tunnels, t)
-	}
-	defer func() {
-		for _, t := range tunnels {
-			t.Close()
-		}
-	}()
-	// if tunnels are made, wait until connection is established
-	if len(config.Tunnel) > 0 {
-		time.Sleep(2 * time.Second)
-	}
-
 	// get database connection handle
 	db, err := sql.Open(config.DB.ServerType, config.DB.DSN)
 	if err != nil {
-		logger.Panicf("error opening database: %v", err)
+		logger.Panic().Msgf("error opening database: %v", err)
 	}
 	// close on shutdown
 	defer db.Close()
@@ -102,12 +67,12 @@ func main() {
 	// Open doesn't open a connection. Validate DSN data:
 	err = db.Ping()
 	if err != nil {
-		logger.Panicf("error pinging database: %v", err)
+		logger.Panic().Msgf("error pinging database: %v", err)
 	}
 
 	srv, err := server.NewServer(config.ServiceName, config.Addr, db, config.DB.Schema, logger, accessLog, config.JWTKey, config.JWTAlg)
 	if err != nil {
-		logger.Panicf("error initializing server: %v", err)
+		logger.Panic().Msgf("error initializing server: %v", err)
 	}
 
 	go func() {
@@ -131,7 +96,7 @@ func main() {
 		<-sigint
 
 		// We received an interrupt signal, shut down.
-		logger.Infof("shutdown requested")
+		logger.Info().Msg("shutdown requested")
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
@@ -141,5 +106,5 @@ func main() {
 	}()
 
 	<-end
-	logger.Info("server stopped")
+	logger.Info().Msg("server stopped")
 }
