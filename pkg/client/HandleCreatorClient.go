@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"github.com/je4/HandleCreator/v2/pkg/server"
 	"github.com/je4/utils/v2/pkg/JWTInterceptor"
-	"github.com/op/go-logging"
+	"github.com/je4/utils/v2/pkg/zLogger"
 	"github.com/pkg/errors"
 	"io"
 	"net/http"
@@ -19,10 +19,10 @@ import (
 type HandleCreatorClient struct {
 	client http.Client
 	addr   string
-	logger *logging.Logger
+	logger zLogger.ZLogger
 }
 
-func NewHandleCreatorClient(service, addr string, jwtKey, jwtAlg string, certSkipVerify bool, logger *logging.Logger) (*HandleCreatorClient, error) {
+func NewHandleCreatorClient(service, addr string, jwtKey, jwtAlg string, certSkipVerify bool, logger zLogger.ZLogger) (*HandleCreatorClient, error) {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: certSkipVerify}
 	tr, err := JWTInterceptor.NewJWTTransport(service, "Create", JWTInterceptor.Secure, nil, sha512.New(), jwtKey, jwtAlg, 30*time.Second)
 	if err != nil {
@@ -43,7 +43,7 @@ func (hsc *HandleCreatorClient) Ping() error {
 	u := fmt.Sprintf("%s/ping", hsc.addr)
 	resp, err := hsc.client.Get(u)
 	if err != nil {
-		hsc.logger.Errorf("cannot query %s: %v", u, err)
+		hsc.logger.Error().Msgf("cannot query %s: %v", u, err)
 		return errors.Wrapf(err, "cannot query %s", u)
 	}
 	if resp.StatusCode != http.StatusOK {
@@ -52,7 +52,7 @@ func (hsc *HandleCreatorClient) Ping() error {
 	jdec := json.NewDecoder(resp.Body)
 	result := &server.ApiResult{}
 	if err := jdec.Decode(result); err != nil {
-		hsc.logger.Errorf("cannot read and decode result: %v", err)
+		hsc.logger.Error().Msgf("cannot read and decode result: %v", err)
 		return errors.Wrap(err, "cannot read and decode result")
 	}
 	if result.Status != "ok" {
@@ -74,21 +74,21 @@ func (hsc *HandleCreatorClient) Create(handle string, URL *url.URL) error {
 		return errors.Wrapf(err, fmt.Sprintf("cannot marshal create struct %v", createStruct))
 	}
 	u := fmt.Sprintf("%s/create", hsc.addr)
-	hsc.logger.Infof("creating handle %s", handle)
+	hsc.logger.Info().Msgf("creating handle %s", handle)
 	resp, err := hsc.client.Post(u,
 		"application/json",
 		bytes.NewBuffer(data))
 	if err != nil {
-		hsc.logger.Errorf("cannot query %s: %v", u, err)
+		hsc.logger.Error().Msgf("cannot query %s: %v", u, err)
 		return errors.Wrapf(err, "cannot query %s", u)
 	}
 	result, err := io.ReadAll(resp.Body)
 	if err != nil {
-		hsc.logger.Errorf("cannot read result: %v", err)
+		hsc.logger.Error().Msgf("cannot read result: %v", err)
 		return errors.Wrap(err, "cannot read result")
 	}
 	if resp.StatusCode != http.StatusCreated {
-		hsc.logger.Errorf("handle %s not created: %s", handle, string(result))
+		hsc.logger.Error().Msgf("handle %s not created: %s", handle, string(result))
 		return errors.New(fmt.Sprintf("handle %s not created: %s", handle, string(result)))
 	}
 	return nil
