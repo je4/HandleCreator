@@ -5,6 +5,7 @@ import (
 	"crypto/sha512"
 	"crypto/tls"
 	"database/sql"
+	"emperror.dev/errors"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/handlers"
@@ -12,7 +13,6 @@ import (
 	"github.com/je4/utils/v2/pkg/JWTInterceptor"
 	dcert "github.com/je4/utils/v2/pkg/cert"
 	"github.com/je4/utils/v2/pkg/zLogger"
-	"github.com/pkg/errors"
 	"io"
 	"net"
 	"net/http"
@@ -29,6 +29,7 @@ type Server struct {
 	db          *sql.DB
 	replaceStmt *sql.Stmt
 	dbSchema    string
+	adminBearer string
 }
 
 type ApiResult struct {
@@ -37,22 +38,23 @@ type ApiResult struct {
 	Result  interface{} `json:"result,omitempty"`
 }
 
-func NewServer(service, addr string, db *sql.DB, dbSchema string, log zLogger.ZLogger, accessLog io.Writer, jwtKey string, jwtAlg []string) (*Server, error) {
+func NewServer(service, addr string, db *sql.DB, dbSchema string, log zLogger.ZLogger, accessLog io.Writer, jwtKey string, jwtAlg []string, adminBearer string) (*Server, error) {
 	host, port, err := net.SplitHostPort(addr)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot split address %s", addr)
 	}
 
 	srv := &Server{
-		service:   service,
-		host:      host,
-		port:      port,
-		db:        db,
-		dbSchema:  dbSchema,
-		log:       log,
-		accessLog: accessLog,
-		jwtKey:    jwtKey,
-		jwtAlg:    jwtAlg,
+		service:     service,
+		host:        host,
+		port:        port,
+		db:          db,
+		dbSchema:    dbSchema,
+		log:         log,
+		accessLog:   accessLog,
+		jwtKey:      jwtKey,
+		jwtAlg:      jwtAlg,
+		adminBearer: adminBearer,
 	}
 
 	return srv, srv.Init()
@@ -80,6 +82,7 @@ func (s *Server) ListenAndServe(cert, key string) (err error) {
 			s.jwtKey,
 			[]string{"HS256", "HS384", "HS512"},
 			sha512.New(),
+			s.adminBearer,
 			s.log,
 		)),
 	).Methods("POST")

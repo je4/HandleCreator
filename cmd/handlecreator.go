@@ -70,7 +70,7 @@ func main() {
 		logger.Panic().Msgf("error pinging database: %v", err)
 	}
 
-	srv, err := server.NewServer(config.ServiceName, config.Addr, db, config.DB.Schema, logger, accessLog, config.JWTKey, config.JWTAlg)
+	srv, err := server.NewServer(config.ServiceName, config.Addr, db, config.DB.Schema, logger, accessLog, config.JWTKey, config.JWTAlg, config.AdminBearer)
 	if err != nil {
 		logger.Panic().Msgf("error initializing server: %v", err)
 	}

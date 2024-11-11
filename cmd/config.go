@@ -1,8 +1,8 @@
 package main
 
 import (
+	"emperror.dev/errors"
 	"github.com/BurntSushi/toml"
-	"github.com/pkg/errors"
 	"time"
 )
 
@@ -52,6 +52,7 @@ type Config struct {
 	KeyPEM      string               `toml:"keypem"`
 	JWTKey      string               `toml:"jwtkey"`
 	JWTAlg      []string             `toml:"jwtalg"`
+	AdminBearer string               `toml:"adminbearer"`
 	Tunnel      map[string]SSHTunnel `toml:"tunnel"`
 	DB          DB                   `toml:"db"`
 }
